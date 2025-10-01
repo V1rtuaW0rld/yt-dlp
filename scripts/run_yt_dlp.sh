@@ -1,26 +1,44 @@
 #!/bin/bash
 
+# Chemin absolu du dossier du projet (/home/virtua/yt-dlp)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+LOG_DIR="$SCRIPT_DIR/logs"
+OUTPUT_DIR="/mnt/nas/video/yt-dlp"
+
 # Horodatage
 timestamp=$(date +"%Y-%m-%d_%H-%M-%S")
 
-# Dossier de sortie sur NAS
-output_dir="/mnt/nas/video/yt-dlp"
-mkdir -p "$output_dir"
+# Créer les dossiers si nécessaire
+mkdir -p "$OUTPUT_DIR"
+mkdir -p "$LOG_DIR"
+
+# Vérifier les permissions du dossier logs
+chmod -R 755 "$LOG_DIR" 2>/dev/null || echo "⚠️ Erreur : Impossible de modifier les permissions de $LOG_DIR"
 
 # Log
-log_file="./logs/download_$timestamp.log"
-touch "$log_file"
+log_file="$LOG_DIR/download_$timestamp.log"
+
+# Vérifier si le fichier de log est accessible
+touch "$log_file" 2>/dev/null || {
+  echo "⚠️ Erreur : Impossible de créer le fichier de log $log_file"
+  exit 1
+}
 
 # URL à télécharger
 URL="$1"
 
 if [[ -z "$URL" ]]; then
-  echo "Erreur : aucun lien fourni. Usage : ./run_yt_dlp.sh <URL>" | tee -a "$log_file"
+  echo "Erreur : aucun lien fourni. Usage : $0 <URL>" | tee -a "$log_file"
   exit 1
 fi
 
-# Commande yt-dlp sérieuse
+# Commande yt-dlp
 yt_dlp_bin="$(which yt-dlp)"
+
+if [[ -z "$yt_dlp_bin" ]]; then
+  echo "Erreur : yt-dlp non trouvé dans le PATH" | tee -a "$log_file"
+  exit 1
+fi
 
 "$yt_dlp_bin" \
   --progress \
@@ -29,5 +47,5 @@ yt_dlp_bin="$(which yt-dlp)"
   --fragment-retries 10 \
   --concurrent-fragments 4 \
   -f "bv*+ba/bestvideo+bestaudio/best" \
-  -o "$output_dir/%(title)s.%(ext)s" \
+  -o "$OUTPUT_DIR/%(title)s.%(ext)s" \
   "$URL" 2>&1 | tee -a "$log_file"

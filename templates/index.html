@@ -2,19 +2,78 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Téléchargement vidéo</title>
+    <title>Téléchargeur YouTube</title>
+    <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-    <h1>Télécharger une vidéo YouTube</h1>
-    <form method="post">
-        <label for="url">URL :</label>
-        <input type="text" id="url" name="url" required>
-        <button type="submit">Télécharger</button>
+    <h1>Téléchargeur YouTube</h1>
+    <form id="download-form" action="/download" method="POST">
+        <input type="text" id="url" name="url" placeholder="https://www.youtube.com/watch?v=..." required>
+        <button type="submit">Lancer Téléchargement</button>
     </form>
 
-    {% if output %}
-    <h2>Résultat :</h2>
-    <pre>{{ output }}</pre>
-    {% endif %}
+    <table id="video-table">
+        <tr>
+            <td id="video-title">En attente du titre...</td>
+            <td>
+                <div id="progress-container">
+                    <progress id="progress" value="0" max="100"></progress>
+                    <span id="progress-text">0%</span>
+                </div>
+            </td>
+        </tr>
+    </table>
+
+    <h2>Sortie en direct :</h2>
+    <div id="output">Prêt à télécharger...</div>
+
+    <script>
+        const form = document.getElementById('download-form');
+        const output = document.getElementById('output');
+        const videoTitle = document.getElementById('video-title');
+        const progressBar = document.getElementById('progress');
+        const progressText = document.getElementById('progress-text');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            output.textContent = 'Démarrage...\n';
+            videoTitle.textContent = 'Récupération du titre...';
+            progressBar.value = 0;
+            progressText.textContent = '0%';
+            const url = document.getElementById('url').value;
+            const res = await fetch('/download', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `url=${encodeURIComponent(url)}`
+            });
+            if (res.ok) {
+                output.textContent += 'Commande lancée !\n';
+            } else {
+                output.textContent += 'Erreur lors du démarrage.\n';
+                videoTitle.textContent = 'Erreur lors de la récupération du titre';
+            }
+        });
+
+        // SSE pour afficher la sortie, le titre et la progression
+        const eventSource = new EventSource('/stream');
+        eventSource.onmessage = (event) => {
+            if (event.data) {
+                if (event.data.startsWith('title: ')) {
+                    videoTitle.textContent = event.data.replace('title: ', '');
+                } else if (event.data.startsWith('progress: ')) {
+                    const percentage = parseFloat(event.data.replace('progress: ', ''));
+                    progressBar.value = percentage;
+                    progressText.textContent = `${percentage.toFixed(1)}%`;
+                } else {
+                    output.textContent += event.data + '\n';
+                    output.scrollTop = output.scrollHeight;
+                }
+            }
+        };
+        eventSource.onerror = () => {
+            output.textContent += 'Erreur de connexion au stream.\n';
+            eventSource.close();
+        };
+    </script>
 </body>
 </html>
