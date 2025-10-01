@@ -20,7 +20,7 @@ def run_yt_dlp(url, task_id):
     try:
         title_cmd = f"yt-dlp --get-title {shlex.quote(url)}"
         print(f"Exécution de la commande titre : {title_cmd}")  # Débogage
-        result = subprocess.run(shlex.split(title_cmd), capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=10)
+        result = subprocess.run(shlex.split(title_cmd), capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=60)
         if result.returncode == 0 and result.stdout.strip():
             title = result.stdout.strip()
             output_queue.put(f"[{task_id}] Titre récupéré : {title}")  # Injecter dans stdout
