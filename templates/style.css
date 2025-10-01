@@ -2,6 +2,9 @@
 body {
     font-family: Arial, sans-serif;
     margin: 20px;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh; /* Assure que le body prend toute la hauteur de la fenêtre */
 }
 
 form {
@@ -30,11 +33,13 @@ button:hover {
     max-width: 600px;
     margin: 20px 0;
     border-collapse: collapse;
+    border: 2px solid #333; /* Bordure visible */
 }
 
 #video-table td {
     padding: 10px;
     vertical-align: middle;
+    border: 1px solid #333; /* Bordures visibles dans les cellules */
 }
 
 #video-title {
@@ -44,12 +49,12 @@ button:hover {
 
 #progress-container {
     position: relative;
-    width: 200px;
+    width: 300px; /* Largeur généreuse */
 }
 
 #progress {
     width: 100%;
-    height: 30px; /* Plus épaisse */
+    height: 40px; /* Barre épaisse */
     -webkit-appearance: none;
     appearance: none;
     background: #e0e0e0;
@@ -63,6 +68,7 @@ button:hover {
 
 #progress::-webkit-progress-value {
     background: #007bff;
+    transition: width 0.3s ease; /* Animation fluide */
 }
 
 #progress-text {
@@ -72,16 +78,24 @@ button:hover {
     transform: translate(-50%, -50%);
     color: white;
     font-weight: bold;
-    text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.5);
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7); /* Ombre marquée */
+    font-size: 1.1em; /* Texte un peu plus grand */
 }
 
 #output {
-    border: 1px solid #ccc;
+    border: 1px solid #333; /* Bordure visible */
     padding: 10px;
     height: 400px;
     overflow-y: auto;
     background: #f5f5f5;
-    white-space: pre-wrap;
+    white-space: pre-wrap; /* Assure les retours à la ligne */
     font-family: monospace;
     margin-top: 20px;
+    flex-grow: 1; /* Remplit l’espace restant */
+    order: 2; /* Assure que la div est en bas */
+    position: relative; /* Positionnement correct */
+}
+
+h2 {
+    margin-top: 20px; /* Espacement avant la sortie */
 }
