@@ -8,14 +8,61 @@
         form { margin-bottom: 20px; }
         input[type="text"] { width: 400px; padding: 8px; }
         button { padding: 8px 16px; background: #007bff; color: white; border: none; cursor: pointer; }
-        #video-info { margin: 20px 0; }
-        #video-title { font-size: 1.2em; font-weight: bold; }
-        #progress-container { margin-top: 10px; }
-        #progress { width: 400px; }
         #output { 
             border: 1px solid #ccc; padding: 10px; height: 400px; 
             overflow-y: auto; background: #f5f5f5; white-space: pre-wrap; 
             font-family: monospace; 
+        }
+        #video-table {
+            width: 75%; /* Utilise 3/4 de la page */
+            margin: 20px 0;
+            border-collapse: collapse;
+            border: 2px solid #333; /* Contours visibles */
+        }
+        #video-table td {
+            padding: 10px;
+            border: 1px solid #333; /* Contours dans les cellules */
+            vertical-align: middle; /* Centrage vertical */
+        }
+        #video-table td:first-child { /* Colonne de gauche (titre) */
+            width: auto; /* S'adapte au contenu */
+        }
+        #video-table td:last-child { /* Colonne de droite (barre) */
+            width: 200px; /* Fixe la largeur à 200px */
+        }
+        #video-title {
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+        #progress-container {
+            position: relative;
+            width: 100%; /* Pleine largeur de la cellule (200px) */
+        }
+        #progress {
+            width: 100%; /* S'étend sur 200px */
+            height: 40px; /* Barre épaisse */
+            -webkit-appearance: none;
+            appearance: none;
+            background: #e0e0e0;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        #progress::-webkit-progress-bar {
+            background: #e0e0e0;
+        }
+        #progress::-webkit-progress-value {
+            background: #007bff;
+            transition: width 0.3s ease; /* Animation fluide */
+        }
+        #progress-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7); /* Ombre pour lisibilité */
+            font-size: 1.1em;
         }
     </style>
 </head>
@@ -26,13 +73,17 @@
         <button type="submit">Lancer Téléchargement</button>
     </form>
 
-    <div id="video-info">
-        <div id="video-title">En attente du titre...</div>
-        <div id="progress-container">
-            <progress id="progress" value="0" max="100">0%</progress>
-            <span id="progress-text">0%</span>
-        </div>
-    </div>
+    <table id="video-table">
+        <tr>
+            <td id="video-title">En attente du titre...</td>
+            <td>
+                <div id="progress-container">
+                    <progress id="progress" value="0" max="100"></progress>
+                    <span id="progress-text">0%</span>
+                </div>
+            </td>
+        </tr>
+    </table>
 
     <h2>Sortie en direct :</h2>
     <div id="output">Prêt à télécharger...</div>
@@ -75,8 +126,8 @@
                     progressBar.value = percentage;
                     progressText.textContent = `${percentage.toFixed(1)}%`;
                 } else {
-                    output.textContent += event.data + '\n';
-                    output.scrollTop = output.scrollHeight;
+                    output.textContent += event.data + '\n'; // Forcer les retours à la ligne
+                    output.scrollTop = output.scrollHeight; // Défilement automatique
                 }
             }
         };
