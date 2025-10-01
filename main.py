@@ -5,30 +5,45 @@ import threading
 import queue
 import os
 import re
+import uuid
 
 app = Flask(__name__)
 
-# File d'attente pour la sortie de yt-dlp
+# File unique pour la sortie
 output_queue = queue.Queue()
 
-def run_yt_dlp(url):
-    """Exécute run_yt_dlp.sh et capture la sortie, titre et progression."""
-    # Récupérer le titre de la vidéo
+def run_yt_dlp(url, task_id):
+    """Exécute run_yt_dlp.sh et capture la sortie, titre et progression pour une tâche."""
+    print(f"Démarrage de la tâche {task_id} pour {url}")  # Débogage
+    # Récupérer le titre de la vidéo avec une commande shell
+    title = None
     try:
         title_cmd = f"yt-dlp --get-title {shlex.quote(url)}"
-        title = subprocess.check_output(shlex.split(title_cmd), text=True, encoding='utf-8', errors='replace').strip()
-        output_queue.put(f"title: {title}")
-    except subprocess.CalledProcessError:
-        output_queue.put("title: Erreur lors de la récupération du titre")
+        print(f"Exécution de la commande titre : {title_cmd}")  # Débogage
+        result = subprocess.run(shlex.split(title_cmd), capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=10)
+        if result.returncode == 0 and result.stdout.strip():
+            title = result.stdout.strip()
+            output_queue.put(f"[{task_id}] Titre récupéré : {title}")  # Injecter dans stdout
+            print(f"Titre récupéré pour {task_id}: {title}")  # Débogage
+        else:
+            output_queue.put(f"[{task_id}] ❌ Erreur ou titre vide : {result.stderr}")
+            print(f"Erreur stdout/stderr pour {task_id}: {result.stderr}")
+            return  # Arrête si pas de titre
+    except subprocess.TimeoutExpired as e:
+        output_queue.put(f"[{task_id}] ❌ Timeout lors de la récupération du titre")
+        print(f"Timeout pour {task_id}: {str(e)}")
+        return
     except Exception as e:
-        output_queue.put(f"title: Erreur : {str(e)}")
+        output_queue.put(f"[{task_id}] ❌ Erreur inattendue : {str(e)}")
+        print(f"Exception pour {task_id}: {str(e)}")
+        return
 
     # Exécuter le script de téléchargement
     script_path = os.path.join("scripts", "run_yt_dlp.sh")
     if not os.path.isfile(script_path):
-        output_queue.put(f"❌ Erreur : Script {script_path} introuvable")
+        output_queue.put(f"[{task_id}] ❌ Erreur : Script {script_path} introuvable")
         return
-    command = f"bash {script_path} {shlex.quote(url)}"
+    command = f"bash {script_path} {shlex.quote(url)} {shlex.quote(task_id)}"
     try:
         process = subprocess.Popen(
             shlex.split(command),
@@ -39,24 +54,25 @@ def run_yt_dlp(url):
             errors='replace'
         )
         # Regex pour extraire le pourcentage
-        progress_re = re.compile(r'\[download\]\s+(\d+\.\d)%')
+        progress_re = re.compile(r'\[download\]\s+(\d+\.\d+)%')
         for line in iter(process.stdout.readline, ''):
             line = line.strip()
-            # Chercher le pourcentage dans les lignes [download]
-            match = progress_re.search(line)
-            if match:
-                percentage = match.group(1)
-                output_queue.put(f"progress: {percentage}")
-            output_queue.put(line)
+            if line:  # Ignorer les lignes vides
+                match = progress_re.search(line)
+                if match:
+                    percentage = match.group(1)
+                    output_queue.put(f"[{task_id}] Progress: {percentage}")  # Injecter progression
+                    print(f"Progression pour {task_id}: {percentage}%")  # Débogage
+                output_queue.put(f"[{task_id}] {line}")
         process.wait()
         if process.returncode == 0:
-            output_queue.put("✅ Téléchargement terminé !")
+            output_queue.put(f"[{task_id}] ✅ Téléchargement terminé !")
         else:
-            output_queue.put(f"❌ Erreur : code {process.returncode}")
+            output_queue.put(f"[{task_id}] ❌ Erreur : code {process.returncode}")
     except FileNotFoundError as e:
-        output_queue.put(f"❌ Erreur : Commande bash ou script introuvable : {str(e)}")
+        output_queue.put(f"[{task_id}] ❌ Erreur : Commande bash ou script introuvable : {str(e)}")
     except Exception as e:
-        output_queue.put(f"❌ Erreur exécution : {str(e)}")
+        output_queue.put(f"[{task_id}] ❌ Erreur exécution : {str(e)}")
 
 @app.route('/')
 def index():
@@ -65,28 +81,31 @@ def index():
 
 @app.route('/download', methods=['POST'])
 def download():
-    """Lance le téléchargement via run_yt_dlp.sh."""
+    """Lance un ou plusieurs téléchargements via run_yt_dlp.sh."""
     url = request.form.get('url')
     if not url:
         return "❌ URL manquante !", 400
-    # Vide la queue pour un nouveau téléchargement
-    while not output_queue.empty():
-        output_queue.get()
-    # Lance en thread
-    threading.Thread(target=run_yt_dlp, args=(url,), daemon=True).start()
-    return "🚀 Téléchargement démarré...", 200
+    # Séparer les URLs par virgule (simplifié sans multitâche pour l'instant)
+    urls = [u.strip() for u in url.split(',') if u.strip()]
+    for url in urls:
+        task_id = str(uuid.uuid4())  # ID unique
+        threading.Thread(target=run_yt_dlp, args=(url, task_id), daemon=True).start()
+        print(f"Tâche {task_id} lancée pour {url}")  # Débogage
+    return "🚀 Téléchargement(s) démarré(s)...", 200
 
 @app.route('/stream')
 def stream():
-    """Stream la sortie en SSE."""
+    """Stream la sortie en SSE avec l'ID de la tâche."""
     def generate():
         while True:
             try:
                 line = output_queue.get_nowait()
                 if line:
+                    print(f"Envoi SSE : {line}")  # Débogage
                     yield f"data: {line}\n\n"
             except queue.Empty:
-                yield ": keepalive\n\n"
+                pass
+            yield ": keepalive\n\n"
     return Response(generate(), mimetype='text/event-stream', headers={'Cache-Control': 'no-cache'})
 
 if __name__ == '__main__':

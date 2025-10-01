@@ -15,8 +15,9 @@ mkdir -p "$LOG_DIR"
 # Vérifier les permissions du dossier logs
 chmod -R 755 "$LOG_DIR" 2>/dev/null || echo "⚠️ Erreur : Impossible de modifier les permissions de $LOG_DIR"
 
-# Log
-log_file="$LOG_DIR/download_$timestamp.log"
+# Log avec ID de tâche
+task_id="$2"  # Deuxième argument : ID de la tâche
+log_file="$LOG_DIR/download_${task_id}_${timestamp}.log"
 
 # Vérifier si le fichier de log est accessible
 touch "$log_file" 2>/dev/null || {
@@ -28,7 +29,7 @@ touch "$log_file" 2>/dev/null || {
 URL="$1"
 
 if [[ -z "$URL" ]]; then
-  echo "Erreur : aucun lien fourni. Usage : $0 <URL>" | tee -a "$log_file"
+  echo "Erreur : aucun lien fourni. Usage : $0 <URL> <TASK_ID>" | tee -a "$log_file"
   exit 1
 fi
 
