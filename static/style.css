@@ -26,25 +26,38 @@ button {
     font-family: monospace;
 }
 #video-table {
-    width: 75%;
+    width: 100%;
     margin: 20px 0;
     border-collapse: collapse;
     border: 2px solid #333;
 }
-#video-table td {
+#video-table th, #video-table td {
     padding: 10px;
     border: 1px solid #333;
     vertical-align: middle;
+    text-align: left;
 }
-#video-table td:first-child {
-    width: auto;
+#video-table th:nth-child(1), #video-table td:nth-child(1) { /* Titre */
+    width: 25%;
 }
-#video-table td:nth-child(2) {
-    width: 200px;
+#video-table th:nth-child(2), #video-table td:nth-child(2) { /* Miniature */
+    width: 15%;
+    text-align: center;
 }
-#video-title {
-    font-size: 1.2em;
-    font-weight: bold;
+#video-table th:nth-child(3), #video-table td:nth-child(3) { /* Durée */
+    width: 10%;
+}
+#video-table th:nth-child(4), #video-table td:nth-child(4) { /* Taille Approx. */
+    width: 10%;
+}
+#video-table th:nth-child(5), #video-table td:nth-child(5) { /* Résolution */
+    width: 10%;
+}
+#video-table th:nth-child(6), #video-table td:nth-child(6) { /* Nom du fichier */
+    width: 20%;
+}
+#video-table th:nth-child(7), #video-table td:nth-child(7) { /* Progression */
+    width: 10%;
 }
 #progress-container {
     position: relative;

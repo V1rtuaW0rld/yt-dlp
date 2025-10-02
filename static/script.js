@@ -27,17 +27,36 @@ eventSource.onmessage = (event) => {
             const data = match[2];
             console.log(`TaskId: "${taskId}", Data: "${data}"`);
             let row = document.querySelector(`tr[data-task-id="${taskId}"]`);
-            if (!row) {
-                row = document.createElement('tr');
-                row.setAttribute('data-task-id', taskId);
-                row.innerHTML = `<td id="video-title-${taskId}">En attente du titre...</td><td><div id="progress-container-${taskId}"><progress id="progress-${taskId}" value="0" max="100"></progress><span id="progress-text-${taskId}">0%</span></div></td>`;
-                tableBody.appendChild(row);
-            }
-            if (data.startsWith('Titre récupéré :')) {
-                const title = data.replace('Titre récupéré :', '').trim();
-                const titleElement = document.getElementById(`video-title-${taskId}`);
-                if (titleElement) titleElement.textContent = title;
-                else console.error(`Élément non trouvé pour title-${taskId}`);
+            
+            if (data.startsWith('VideoInfo:')) {
+                try {
+                    const videoInfo = JSON.parse(data.replace('VideoInfo:', '').trim());
+                    if (!row) {
+                        row = document.createElement('tr');
+                        row.setAttribute('data-task-id', taskId);
+                        row.innerHTML = `
+                            <td id="video-title-${taskId}">${videoInfo.title || 'En attente du titre...'}</td>
+                            <td id="video-thumbnail-${taskId}">${videoInfo.thumbnail ? `<img src="${videoInfo.thumbnail}" alt="Miniature" style="max-width: 100px; max-height: 100px;">` : 'N/A'}</td>
+                            <td id="video-duration-${taskId}">${videoInfo.duration_string || 'N/A'}</td>
+                            <td id="video-filesize-${taskId}">${videoInfo.filesize_approx || 'N/A'}</td>
+                            <td id="video-resolution-${taskId}">${videoInfo.resolution || 'N/A'}</td>
+                            <td id="video-filename-${taskId}">${videoInfo.filename || 'N/A'}</td>
+                            <td><div id="progress-container-${taskId}"><progress id="progress-${taskId}" value="0" max="100"></progress><span id="progress-text-${taskId}">0%</span></div></td>
+                        `;
+                        tableBody.appendChild(row);
+                    } else {
+                        // Mettre à jour les champs si la ligne existe déjà
+                        document.getElementById(`video-title-${taskId}`).textContent = videoInfo.title || 'En attente du titre...';
+                        document.getElementById(`video-thumbnail-${taskId}`).innerHTML = videoInfo.thumbnail ? `<img src="${videoInfo.thumbnail}" alt="Miniature" style="max-width: 100px; max-height: 100px;">` : 'N/A';
+                        document.getElementById(`video-duration-${taskId}`).textContent = videoInfo.duration_string || 'N/A';
+                        document.getElementById(`video-filesize-${taskId}`).textContent = videoInfo.filesize_approx || 'N/A';
+                        document.getElementById(`video-resolution-${taskId}`).textContent = videoInfo.resolution || 'N/A';
+                        document.getElementById(`video-filename-${taskId}`).textContent = videoInfo.filename || 'N/A';
+                    }
+                } catch (e) {
+                    console.error(`Erreur lors du parsing VideoInfo pour ${taskId}: ${e}`);
+                    output.textContent += `[${taskId}] Erreur lors du parsing des informations vidéo.\n`;
+                }
             } else if (data.startsWith('Progress:')) {
                 const percentage = parseFloat(data.replace('Progress:', '').trim());
                 const progress = document.getElementById(`progress-${taskId}`);
@@ -45,7 +64,9 @@ eventSource.onmessage = (event) => {
                 if (progress && progressText) {
                     progress.value = percentage;
                     progressText.textContent = `${percentage.toFixed(1)}%`;
-                } else console.error(`Progression non trouvée pour ${taskId}`);
+                } else {
+                    console.error(`Progression non trouvée pour ${taskId}`);
+                }
             } else {
                 output.textContent += `${event.data}\n`;
                 output.scrollTop = output.scrollHeight;

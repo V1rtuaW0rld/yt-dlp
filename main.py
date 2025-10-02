@@ -6,6 +6,7 @@ import queue
 import os
 import re
 import uuid
+import json  # Ajouté pour parser le JSON
 
 app = Flask(__name__)
 
@@ -13,24 +14,56 @@ app = Flask(__name__)
 output_queue = queue.Queue()
 
 def run_yt_dlp(url, task_id):
-    """Exécute run_yt_dlp.sh et capture la sortie, titre et progression pour une tâche."""
+    """Exécute run_yt_dlp.sh et capture la sortie, informations vidéo et progression pour une tâche."""
     print(f"Démarrage de la tâche {task_id} pour {url}")  # Débogage
-    # Récupérer le titre de la vidéo avec une commande shell
-    title = None
+    # Récupérer les informations de la vidéo avec yt-dlp --dump-json
     try:
-        title_cmd = f"yt-dlp --get-title {shlex.quote(url)}"
-        print(f"Exécution de la commande titre : {title_cmd}")  # Débogage
-        result = subprocess.run(shlex.split(title_cmd), capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=60)
+        json_cmd = f"yt-dlp --dump-json {shlex.quote(url)}"
+        print(f"Exécution de la commande JSON : {json_cmd}")  # Débogage
+        result = subprocess.run(shlex.split(json_cmd), capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=60)
         if result.returncode == 0 and result.stdout.strip():
-            title = result.stdout.strip()
-            output_queue.put(f"[{task_id}] Titre récupéré : {title}")  # Injecter dans stdout
-            print(f"Titre récupéré pour {task_id}: {title}")  # Débogage
+            try:
+                video_info = json.loads(result.stdout.strip())
+                # Extraire les champs demandés
+                title = video_info.get('title', 'Titre inconnu')
+                thumbnail = video_info.get('thumbnail', '')  # URL de la miniature
+                duration_string = video_info.get('duration_string', 'N/A')  # Format hh:mm:ss
+                filesize_approx = video_info.get('filesize_approx', None)  # En octets, à formater
+                resolution = video_info.get('resolution', 'N/A')  # Résolution (ex. 1920x1080)
+                filename = video_info.get('filename', 'N/A')  # Nom du fichier prévu
+
+                # Formater filesize_approx en Mo ou Go
+                if filesize_approx:
+                    if filesize_approx >= 1_000_000_000:  # Go
+                        filesize_approx = f"{filesize_approx / 1_000_000_000:.2f} Go"
+                    elif filesize_approx >= 1_000_000:  # Mo
+                        filesize_approx = f"{filesize_approx / 1_000_000:.2f} Mo"
+                    else:  # Ko
+                        filesize_approx = f"{filesize_approx / 1_000:.2f} Ko"
+                else:
+                    filesize_approx = 'N/A'
+
+                # Envoyer les informations dans la file avec un format clair
+                info_dict = {
+                    'title': title,
+                    'thumbnail': thumbnail,
+                    'duration_string': duration_string,
+                    'filesize_approx': filesize_approx,
+                    'resolution': resolution,
+                    'filename': filename
+                }
+                output_queue.put(f"[{task_id}] VideoInfo: {json.dumps(info_dict)}")
+                print(f"Informations récupérées pour {task_id}: {info_dict}")  # Débogage
+            except json.JSONDecodeError as e:
+                output_queue.put(f"[{task_id}] ❌ Erreur lors du parsing JSON : {str(e)}")
+                print(f"Erreur JSON pour {task_id}: {str(e)}")
+                return
         else:
-            output_queue.put(f"[{task_id}] ❌ Erreur ou titre vide : {result.stderr}")
+            output_queue.put(f"[{task_id}] ❌ Erreur ou JSON vide : {result.stderr}")
             print(f"Erreur stdout/stderr pour {task_id}: {result.stderr}")
-            return  # Arrête si pas de titre
+            return
     except subprocess.TimeoutExpired as e:
-        output_queue.put(f"[{task_id}] ❌ Timeout lors de la récupération du titre")
+        output_queue.put(f"[{task_id}] ❌ Timeout lors de la récupération des informations")
         print(f"Timeout pour {task_id}: {str(e)}")
         return
     except Exception as e:
@@ -38,7 +71,7 @@ def run_yt_dlp(url, task_id):
         print(f"Exception pour {task_id}: {str(e)}")
         return
 
-    # Exécuter le script de téléchargement
+    # Exécuter le script de téléchargement (inchangé)
     script_path = os.path.join("scripts", "run_yt_dlp.sh")
     if not os.path.isfile(script_path):
         output_queue.put(f"[{task_id}] ❌ Erreur : Script {script_path} introuvable")
@@ -61,7 +94,7 @@ def run_yt_dlp(url, task_id):
                 match = progress_re.search(line)
                 if match:
                     percentage = match.group(1)
-                    output_queue.put(f"[{task_id}] Progress: {percentage}")  # Injecter progression
+                    output_queue.put(f"[{task_id}] Progress: {percentage}")
                     print(f"Progression pour {task_id}: {percentage}%")  # Débogage
                 output_queue.put(f"[{task_id}] {line}")
         process.wait()
