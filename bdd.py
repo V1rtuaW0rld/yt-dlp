@@ -48,15 +48,20 @@ class Database:
             """, (progress, task_id))
             conn.commit()
 
-    def get_all_tasks(self):
-        """Récupère toutes les tâches triées par date décroissante."""
+    def get_all_tasks_paginated(self, page=1, per_page=5):
+        """Récupère les tâches triées par date décroissante avec pagination."""
+        offset = (page - 1) * per_page
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
+            cursor.execute("SELECT COUNT(*) FROM tasks")
+            total = cursor.fetchone()[0]
             cursor.execute("""
                 SELECT date, task_id, title, thumbnail, duration_string, filesize_approx, resolution, filename, progress
-                FROM tasks ORDER BY date DESC
-            """)
-            return cursor.fetchall()
+                FROM tasks ORDER BY date DESC LIMIT ? OFFSET ?
+            """, (per_page, offset))
+            tasks = cursor.fetchall()
+            total_pages = (total + per_page - 1) // per_page if total > 0 else 1
+            return tasks, total_pages, total
 
     def get_task_by_id(self, task_id):
         """Récupère une tâche spécifique par task_id."""
@@ -68,5 +73,5 @@ class Database:
             """, (task_id,))
             return cursor.fetchone()
 
-# Instance globale pour simplifier l'accès
+# Instance globale
 db = Database()

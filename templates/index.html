@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <title>WebVideoDownLoader</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <!-- Bootstrap CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body>
     <h1>WebVideoDownLoader</h1>
@@ -12,8 +14,8 @@
         <button type="submit">Lancer Téléchargement(s)</button>
     </form>
 
-    <table id="video-table">
-        <thead>
+    <table id="video-table" class="table table-striped table-bordered">
+        <thead class="table-dark">
             <tr>
                 <th>Date</th>
                 <th>Titre</th>
@@ -28,9 +30,13 @@
         <tbody id="video-table-body"></tbody>
     </table>
 
+    <!-- Conteneur pour la pagination -->
+    <div id="pagination-container" class="d-flex justify-content-center align-items-center mt-3"></div>
+
     <h2>Sortie en direct :</h2>
     <div id="output">Prêt à télécharger...</div>
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
