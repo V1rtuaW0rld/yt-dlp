@@ -37,26 +37,29 @@ button {
     vertical-align: middle;
     text-align: left;
 }
-#video-table th:nth-child(1), #video-table td:nth-child(1) { /* Titre */
-    width: 25%;
+#video-table th:nth-child(1), #video-table td:nth-child(1) { /* Date */
+    width: 15%;
 }
-#video-table th:nth-child(2), #video-table td:nth-child(2) { /* Miniature */
+#video-table th:nth-child(2), #video-table td:nth-child(2) { /* Titre */
+    width: 20%;
+}
+#video-table th:nth-child(3), #video-table td:nth-child(3) { /* Miniature */
     width: 15%;
     text-align: center;
 }
-#video-table th:nth-child(3), #video-table td:nth-child(3) { /* Durée */
+#video-table th:nth-child(4), #video-table td:nth-child(4) { /* Durée */
     width: 10%;
 }
-#video-table th:nth-child(4), #video-table td:nth-child(4) { /* Taille Approx. */
+#video-table th:nth-child(5), #video-table td:nth-child(5) { /* Taille Approx. */
     width: 10%;
 }
-#video-table th:nth-child(5), #video-table td:nth-child(5) { /* Résolution */
+#video-table th:nth-child(6), #video-table td:nth-child(6) { /* Résolution */
     width: 10%;
 }
-#video-table th:nth-child(6), #video-table td:nth-child(6) { /* Nom du fichier */
-    width: 20%;
+#video-table th:nth-child(7), #video-table td:nth-child(7) { /* Nom du fichier */
+    width: 15%;
 }
-#video-table th:nth-child(7), #video-table td:nth-child(7) { /* Progression */
+#video-table th:nth-child(8), #video-table td:nth-child(8) { /* Progression */
     width: 10%;
 }
 #progress-container {
