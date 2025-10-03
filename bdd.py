@@ -1,5 +1,5 @@
 import sqlite3
-import os
+import time
 from datetime import datetime
 
 class Database:
@@ -22,30 +22,45 @@ class Database:
                     filesize_approx TEXT,
                     resolution TEXT,
                     filename TEXT,
-                    progress REAL
+                    progress REAL,
+                    original_url TEXT,
+                    status TEXT DEFAULT 'ongoing'  -- Unix timestamp ou '1'
                 )
             """)
             conn.commit()
 
-    def add_task(self, task_id, title, thumbnail, duration_string, filesize_approx, resolution, filename):
-        """Ajoute une nouvelle tâche avec une date actuelle et progress = 0."""
-        date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    def add_task(self, task_id, title, thumbnail, duration_string, filesize_approx, resolution, filename, original_url):
+        """Ajoute une nouvelle tâche avec un timestamp Unix."""
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        timestamp = str(int(time.time()))
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                INSERT OR IGNORE INTO tasks (date, task_id, title, thumbnail, duration_string, filesize_approx, resolution, filename, progress)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)
-            """, (date, task_id, title, thumbnail, duration_string, filesize_approx, resolution, filename))
+                INSERT OR IGNORE INTO tasks (
+                    date, task_id, title, thumbnail, duration_string,
+                    filesize_approx, resolution, filename, progress,
+                    original_url, status
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+            """, (now, task_id, title, thumbnail, duration_string,
+                  filesize_approx, resolution, filename, original_url, timestamp))
             conn.commit()
             return self.get_task_by_id(task_id)
 
     def update_progress(self, task_id, progress):
-        """Met à jour la progression d'une tâche."""
+        """Met à jour la progression avec un timestamp Unix, ou '1' si terminé."""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
-            cursor.execute("""
-                UPDATE tasks SET progress = ? WHERE task_id = ?
-            """, (progress, task_id))
+            if progress >= 100:
+                cursor.execute("""
+                    UPDATE tasks SET progress = ?, status = '1'
+                    WHERE task_id = ?
+                """, (progress, task_id))
+            else:
+                timestamp = str(int(time.time()))
+                cursor.execute("""
+                    UPDATE tasks SET progress = ?, status = ?
+                    WHERE task_id = ?
+                """, (progress, timestamp, task_id))
             conn.commit()
 
     def get_all_tasks_paginated(self, page=1, per_page=5):
@@ -56,7 +71,9 @@ class Database:
             cursor.execute("SELECT COUNT(*) FROM tasks")
             total = cursor.fetchone()[0]
             cursor.execute("""
-                SELECT date, task_id, title, thumbnail, duration_string, filesize_approx, resolution, filename, progress
+                SELECT date, task_id, title, thumbnail, duration_string,
+                       filesize_approx, resolution, filename, progress,
+                       original_url, status
                 FROM tasks ORDER BY date DESC LIMIT ? OFFSET ?
             """, (per_page, offset))
             tasks = cursor.fetchall()
@@ -68,7 +85,9 @@ class Database:
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT date, task_id, title, thumbnail, duration_string, filesize_approx, resolution, filename, progress
+                SELECT date, task_id, title, thumbnail, duration_string,
+                       filesize_approx, resolution, filename, progress,
+                       original_url, status
                 FROM tasks WHERE task_id = ?
             """, (task_id,))
             return cursor.fetchone()
