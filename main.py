@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, Response
+from flask import Flask, render_template, request, Response, redirect, url_for
 import subprocess
 import shlex
 import threading
@@ -7,14 +7,17 @@ import os
 import re
 import uuid
 import json
-from bdd import db
+from bdd import db  # Importe l'instance globale de Database
 
 app = Flask(__name__)
 
+# File unique pour la sortie
 output_queue = queue.Queue()
 
 def run_yt_dlp(url, task_id):
+    """Exécute run_yt_dlp.sh et capture les informations vidéo et progression."""
     print(f"Démarrage de la tâche {task_id} pour {url}")
+    # Récupérer les informations de la vidéo avec yt-dlp --dump-json
     try:
         json_cmd = f"yt-dlp --dump-json {shlex.quote(url)}"
         print(f"Exécution de la commande JSON : {json_cmd}")
@@ -39,6 +42,7 @@ def run_yt_dlp(url, task_id):
                 else:
                     filesize_approx = 'N/A'
 
+                # Ajouter la tâche à la base
                 db.add_task(task_id, title, thumbnail, duration_string, filesize_approx, resolution, filename)
                 output_queue.put(f"[{task_id}] VideoInfo: {json.dumps({'task_id': task_id, 'date': db.get_task_by_id(task_id)[0], 'title': title, 'thumbnail': thumbnail, 'duration_string': duration_string, 'filesize_approx': filesize_approx, 'resolution': resolution, 'filename': filename, 'progress': 0})}")
             except json.JSONDecodeError as e:
@@ -54,6 +58,7 @@ def run_yt_dlp(url, task_id):
         output_queue.put(f"[{task_id}] ❌ Erreur inattendue : {str(e)}")
         return
 
+    # Exécuter le script de téléchargement
     script_path = os.path.join("scripts", "run_yt_dlp.sh")
     if not os.path.isfile(script_path):
         output_queue.put(f"[{task_id}] ❌ Erreur : Script {script_path} introuvable")
@@ -103,7 +108,7 @@ def download():
         task_id = str(uuid.uuid4())
         threading.Thread(target=run_yt_dlp, args=(url, task_id), daemon=True).start()
         print(f"Tâche {task_id} lancée pour {url}")
-    return "🚀 Téléchargement(s) démarré(s)...", 200
+    return "🚀 Téléchargement(s) démarré(s)...", 200  # Retourne texte pour AJAX
 
 @app.route('/stream')
 def stream():
@@ -111,10 +116,8 @@ def stream():
     per_page = 5
     def generate():
         tasks, total_pages, total = db.get_all_tasks_paginated(page, per_page)
-        if not tasks:
-            print("Aucune tâche trouvée pour la page", page)
         print(f"Page {page} - Tâches chargées: {len(tasks)}, Total pages: {total_pages}, Total items: {total}")
-        print(f"Ordre des tâches initiales: {[task[0] for task in tasks]}")
+        print(f"Ordre des tâches initiales: {[task[0] for task in tasks]}")  # Débogage
         initial_data = {
             "type": "InitialData",
             "tasks": [{"date": task[0], "task_id": task[1], "title": task[2], "thumbnail": task[3], "duration_string": task[4], "filesize_approx": task[5], "resolution": task[6], "filename": task[7], "progress": task[8]} for task in tasks],
@@ -134,7 +137,7 @@ def stream():
                     yield f"data: {line}\n\n"
             except queue.Empty:
                 yield ": keepalive\n\n"
-    return Response(generate(), mimetype='text/event-stream', headers={'Cache-Control': 'no-cache', 'Connection': 'keep-alive'})
+    return Response(generate(), mimetype='text/event-stream', headers={'Cache-Control': 'no-cache'})
 
 if __name__ == '__main__':
     print("Démarrage du serveur Flask...")

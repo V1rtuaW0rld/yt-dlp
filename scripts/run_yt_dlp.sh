@@ -33,7 +33,17 @@ if [[ -z "$URL" ]]; then
   exit 1
 fi
 
-# Commande yt-dlp
+# Calcul de la longueur maximale du titre
+output_length=${#OUTPUT_DIR}  # Longueur de /mnt/nas/video/yt-dlp/ (environ 20)
+max_title_length=$((250 - output_length - 4))  # 250 - longueur de OUTPUT_DIR - 4 (pour .ext)
+
+# Vérifier que max_title_length est positif
+if [ "$max_title_length" -le 0 ]; then
+  echo "⚠️ Erreur : La longueur de OUTPUT_DIR ($output_length) est trop longue, max_title_length = $max_title_length" | tee -a "$log_file"
+  exit 1
+fi
+
+# Commande yt-dlp avec troncature dynamique
 yt_dlp_bin="$(which yt-dlp)"
 
 if [[ -z "$yt_dlp_bin" ]]; then
@@ -41,12 +51,18 @@ if [[ -z "$yt_dlp_bin" ]]; then
   exit 1
 fi
 
+
+# Afficher la commande exacte pour déboguer
+echo "Exécution de la commande : $yt_dlp_bin --restrict-filenames --progress --socket-timeout 60 --retries 20 --fragment-retries 10 --concurrent-fragments 4 -f \"bv*+ba/bestvideo+bestaudio/best\" -o \"$OUTPUT_DIR/%(title).${max_title_length}s.%(ext)s\" \"$URL\" 2>&1 | tee -a \"$log_file\"" | tee -a "$log_file"
+
+
 "$yt_dlp_bin" \
+  --restrict-filenames \
   --progress \
   --socket-timeout 60 \
   --retries 20 \
   --fragment-retries 10 \
   --concurrent-fragments 4 \
   -f "bv*+ba/bestvideo+bestaudio/best" \
-  -o "$OUTPUT_DIR/%(title)s.%(ext)s" \
-  "$URL" 2>&1 | tee -a "$log_file"
+  -o "$OUTPUT_DIR/%(title).${max_title_length}s.%(ext)s" \
+  "$URL" 2>&1 | tee -a "$log_file"  # Pas de \ avant la dernière ligne
