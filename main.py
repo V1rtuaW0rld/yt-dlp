@@ -27,7 +27,7 @@ def run_yt_dlp(url, task_id):
                 duration_string = video_info.get('duration_string', 'N/A')
                 filesize_approx = video_info.get('filesize_approx', None)
                 resolution = video_info.get('resolution', 'N/A')
-                filename = f"{title}.{video_info.get('ext', 'mp4')}"  # Basé sur le titre
+                filename = f"{title}.{video_info.get('ext', 'mp4')}"
 
                 if filesize_approx:
                     if filesize_approx >= 1_000_000_000:
@@ -39,8 +39,9 @@ def run_yt_dlp(url, task_id):
                 else:
                     filesize_approx = 'N/A'
 
-                db.add_task(task_id, title, thumbnail, duration_string, filesize_approx, resolution, filename, url)  # Ajout de original_url
-                output_queue.put(f"[{task_id}] VideoInfo: {json.dumps({'task_id': task_id, 'date': db.get_task_by_id(task_id)[0], 'title': title, 'thumbnail': thumbnail, 'duration_string': duration_string, 'filesize_approx': filesize_approx, 'resolution': resolution, 'filename': filename, 'progress': 0})}")
+                db.add_task(task_id, title, thumbnail, duration_string, filesize_approx, resolution, filename, url)
+                task = db.get_task_by_id(task_id)
+                output_queue.put(f"[{task_id}] VideoInfo: {json.dumps({'task_id': task_id, 'date': task[0], 'title': title, 'thumbnail': thumbnail, 'duration_string': duration_string, 'filesize_approx': filesize_approx, 'resolution': resolution, 'filename': filename, 'progress': 0, 'status': task[10]})}")
             except json.JSONDecodeError as e:
                 output_queue.put(f"[{task_id}] ❌ Erreur lors du parsing JSON : {str(e)}")
                 return
@@ -82,6 +83,8 @@ def run_yt_dlp(url, task_id):
         if process.returncode == 0:
             db.update_progress(task_id, 100)
             output_queue.put(f"[{task_id}] ✅ Téléchargement terminé !")
+            task = db.get_task_by_id(task_id)
+            output_queue.put(f"[{task_id}] VideoInfo: {json.dumps({'task_id': task_id, 'status': task[10]})}")
         else:
             output_queue.put(f"[{task_id}] ❌ Erreur : code {process.returncode}")
     except FileNotFoundError as e:
@@ -117,7 +120,7 @@ def stream():
         print(f"Ordre des tâches initiales: {[task[0] for task in tasks]}")
         initial_data = {
             "type": "InitialData",
-            "tasks": [{"date": task[0], "task_id": task[1], "title": task[2], "thumbnail": task[3], "duration_string": task[4], "filesize_approx": task[5], "resolution": task[6], "filename": task[7], "progress": task[8]} for task in tasks],
+            "tasks": [{"date": task[0], "task_id": task[1], "title": task[2], "thumbnail": task[3], "duration_string": task[4], "filesize_approx": task[5], "resolution": task[6], "filename": task[7], "progress": task[8], "status": task[10]} for task in tasks],
             "pagination": {
                 "current_page": page,
                 "total_pages": total_pages,
@@ -138,7 +141,6 @@ def stream():
 
 if __name__ == '__main__':
     print("Démarrage du serveur Flask...")
-
     # Lancement de sentinelle.sh en tâche de fond
     sentinelle_path = os.path.join("scripts", "sentinelle.sh")
     if os.path.isfile(sentinelle_path):
@@ -149,5 +151,4 @@ if __name__ == '__main__':
         ).start()
     else:
         print(f"⚠️ Script {sentinelle_path} introuvable. sentinelle.sh ne sera pas lancé.")
-
     app.run(host="0.0.0.0", port=5011, debug=True)
