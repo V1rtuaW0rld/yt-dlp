@@ -8,6 +8,7 @@ import re
 import uuid
 import json
 from bdd import db
+import time
 
 app = Flask(__name__)
 
@@ -107,6 +108,22 @@ def download():
         threading.Thread(target=run_yt_dlp, args=(url, task_id), daemon=True).start()
         print(f"Tâche {task_id} lancée pour {url}")
     return "🚀 Téléchargement(s) démarré(s)...", 200
+
+@app.route('/resume', methods=['POST'])
+def resume():
+    task_id = request.form.get('task_id')
+    if not task_id:
+        return "❌ task_id manquant !", 400
+    # Récupérer l'URL originale depuis la BDD
+    task = db.get_task_by_id(task_id)
+    if not task or not task[9]:  # task[9] est original_url
+        return f"❌ Tâche {task_id} non trouvée ou URL absente", 404
+    original_url = task[9]
+    # Réinitialiser le statut à un timestamp epoch
+    db.update_progress(task_id, 0)  # Remet progress à 0 et status à timestamp
+    # Relancer le téléchargement dans un thread
+    threading.Thread(target=run_yt_dlp, args=(original_url, task_id), daemon=True).start()
+    return f"🚀 Reprise de la tâche {task_id} avec {original_url}", 200
 
 @app.route('/stream')
 def stream():
