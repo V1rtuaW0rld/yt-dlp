@@ -9,6 +9,7 @@ import uuid
 import json
 from bdd import db
 import time
+import sqlite3
 
 app = Flask(__name__)
 
@@ -217,9 +218,9 @@ def resume():
     original_url = task[9]
     task_type = task[11]  # task[11] est type (video ou audio)
     
-    # Mettre à jour le status avec un nouveau timestamp (sans toucher la progression)
+    # Mettre à jour status avec un nouveau timestamp
     import time
-    new_timestamp = int(time.time())  # Timestamp actuel en secondes
+    new_timestamp = str(int(time.time()))  # Convertir en string pour TEXT
     db.update_status(task_id, new_timestamp)
     
     # Lancer la reprise selon le type

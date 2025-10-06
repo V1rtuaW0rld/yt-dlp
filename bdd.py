@@ -93,5 +93,12 @@ class Database:
             """, (task_id,))
             return cursor.fetchone()
 
+    def update_status(self, task_id, new_status):
+        """Met à jour uniquement le status avec un nouveau timestamp."""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("UPDATE tasks SET status = ? WHERE task_id = ?", (new_status, task_id))
+            conn.commit()
+
 # Instance globale
 db = Database()
