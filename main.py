@@ -215,12 +215,22 @@ def resume():
     if not task or not task[9]:  # task[9] est original_url
         return f"❌ Tâche {task_id} non trouvée ou URL absente", 404
     original_url = task[9]
-    db.update_progress(task_id, 0)  # Réinitialise progress et status à timestamp
-    if task[11] == 'video':  # task[11] est type
+    task_type = task[11]  # task[11] est type (video ou audio)
+    
+    # Mettre à jour le status avec un nouveau timestamp (sans toucher la progression)
+    import time
+    new_timestamp = int(time.time())  # Timestamp actuel en secondes
+    db.update_status(task_id, new_timestamp)
+    
+    # Lancer la reprise selon le type
+    if task_type == 'video':
         threading.Thread(target=run_yt_dlp, args=(original_url, task_id), daemon=True).start()
-    else:
+        return f"🚀 Reprise de la tâche {task_id} (vidéo) avec {original_url}", 200
+    elif task_type == 'audio':
         threading.Thread(target=run_yt_dlp_audio, args=(original_url, task_id), daemon=True).start()
-    return f"🚀 Reprise de la tâche {task_id} avec {original_url}", 200
+        return f"🚀 Reprise de la tâche {task_id} (audio) avec {original_url}", 200
+    else:
+        return f"❌ Type de tâche {task_type} inconnu pour {task_id}", 400
 
 @app.route('/stream')
 def stream():
