@@ -10,8 +10,15 @@
 <body>
     <h1>WebVideoDownLoader</h1>
     <form id="download-form" action="/download" method="POST">
-        <input type="text" id="url" name="url" placeholder="https://www.youtube.com/watch?v=..." required>
-        <button type="submit">Lancer Téléchargement(s)</button>
+        <div class="input-group mb-3">
+            <input type="text" id="url" name="url" class="form-control" placeholder="https://www.youtube.com/watch?v=..." required>
+            <button type="submit" class="btn btn-outline-primary">
+                <img src="{{ url_for('static', filename='images/video.png') }}" alt="Lancer Téléchargement Vidéo" style="max-width: 70px; max-height: 50px; vertical-align: middle;">
+            </button>
+            <button type="submit" form="download-form-audio" class="btn btn-outline-secondary">
+                <img src="{{ url_for('static', filename='images/sound.png') }}" alt="Lancer Téléchargement Audio" style="max-width: 70px; max-height: 50px; vertical-align: middle;">
+            </button>			
+        </div>
     </form>
 
     <table id="video-table" class="table table-striped table-bordered">
@@ -25,7 +32,7 @@
                 <th>Résolution</th>
                 <th>Nom du fichier</th>
                 <th>Progression</th>
-                <th>Action</th> <!-- Nouvelle colonne -->
+                <th>Action</th> 
             </tr>
         </thead>
         <tbody id="video-table-body"></tbody>
