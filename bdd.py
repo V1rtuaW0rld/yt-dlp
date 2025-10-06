@@ -24,13 +24,14 @@ class Database:
                     filename TEXT,
                     progress REAL,
                     original_url TEXT,
-                    status TEXT DEFAULT 'ongoing'  -- Unix timestamp ou '1'
+                    status TEXT DEFAULT 'ongoing',  -- Unix timestamp ou '1'
+                    type TEXT DEFAULT 'video'
                 )
             """)
             conn.commit()
 
-    def add_task(self, task_id, title, thumbnail, duration_string, filesize_approx, resolution, filename, original_url):
-        """Ajoute une nouvelle tâche avec un timestamp Unix."""
+    def add_task(self, task_id, title, thumbnail, duration_string, filesize_approx, resolution, filename, original_url, task_type='video'):
+        """Ajoute une nouvelle tâche avec un timestamp Unix et le type de tâche."""
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         timestamp = str(int(time.time()))
         with sqlite3.connect(self.db_path) as conn:
@@ -39,10 +40,10 @@ class Database:
                 INSERT OR IGNORE INTO tasks (
                     date, task_id, title, thumbnail, duration_string,
                     filesize_approx, resolution, filename, progress,
-                    original_url, status
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+                    original_url, status, type
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)
             """, (now, task_id, title, thumbnail, duration_string,
-                  filesize_approx, resolution, filename, original_url, timestamp))
+                  filesize_approx, resolution, filename, original_url, timestamp, task_type))
             conn.commit()
             return self.get_task_by_id(task_id)
 
@@ -73,7 +74,7 @@ class Database:
             cursor.execute("""
                 SELECT date, task_id, title, thumbnail, duration_string,
                        filesize_approx, resolution, filename, progress,
-                       original_url, status
+                       original_url, status, type
                 FROM tasks ORDER BY date DESC LIMIT ? OFFSET ?
             """, (per_page, offset))
             tasks = cursor.fetchall()
@@ -87,7 +88,7 @@ class Database:
             cursor.execute("""
                 SELECT date, task_id, title, thumbnail, duration_string,
                        filesize_approx, resolution, filename, progress,
-                       original_url, status
+                       original_url, status, type
                 FROM tasks WHERE task_id = ?
             """, (task_id,))
             return cursor.fetchone()

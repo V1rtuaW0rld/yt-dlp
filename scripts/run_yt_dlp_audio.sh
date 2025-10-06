@@ -43,16 +43,7 @@ if [ "$max_title_length" -le 0 ]; then
   exit 1
 fi
 
-# Déterminer le format en fonction de --audio-only
-if [[ "$@" == *"--audio-only"* ]]; then
-  FORMAT="-f 'ba/bestaudio/audio'"
-  EXTENSION="mp3"  # Forcer l'extension audio
-else
-  FORMAT="-f 'bv*+ba/bestvideo+bestaudio/best'"
-  EXTENSION="%(ext)s"  # Laisser yt-dlp choisir l'extension pour vidéo
-fi
-
-# Commande yt-dlp avec troncature dynamique
+# Commande yt-dlp pour audio uniquement
 yt_dlp_bin="$(which yt-dlp)"
 
 if [[ -z "$yt_dlp_bin" ]]; then
@@ -61,7 +52,7 @@ if [[ -z "$yt_dlp_bin" ]]; then
 fi
 
 # Afficher la commande exacte pour déboguer
-echo "Exécution de la commande : $yt_dlp_bin --restrict-filenames --progress --socket-timeout 60 --retries 20 --fragment-retries 10 --concurrent-fragments 4 $FORMAT -o \"$OUTPUT_DIR/%(title).${max_title_length}s.$EXTENSION\" \"$URL\" 2>&1 | tee -a \"$log_file\"" | tee -a "$log_file"
+echo "Exécution de la commande : $yt_dlp_bin --restrict-filenames --progress --socket-timeout 60 --retries 20 --fragment-retries 10 --concurrent-fragments 4 -f 'bestaudio' -x --audio-format mp3 -o \"$OUTPUT_DIR/%(title).${max_title_length}s.mp3\" \"$URL\" 2>&1 | tee -a \"$log_file\"" | tee -a "$log_file"
 
 "$yt_dlp_bin" \
   --restrict-filenames \
@@ -70,6 +61,8 @@ echo "Exécution de la commande : $yt_dlp_bin --restrict-filenames --progress --
   --retries 20 \
   --fragment-retries 10 \
   --concurrent-fragments 4 \
-  $FORMAT \
-  -o "$OUTPUT_DIR/%(title).${max_title_length}s.$EXTENSION" \
+  -f "bestaudio" \
+  -x \
+  --audio-format mp3 \
+  -o "$OUTPUT_DIR/%(title).${max_title_length}s.mp3" \
   "$URL" 2>&1 | tee -a "$log_file"

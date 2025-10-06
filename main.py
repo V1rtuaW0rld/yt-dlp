@@ -15,7 +15,7 @@ app = Flask(__name__)
 output_queue = queue.Queue()
 
 def run_yt_dlp(url, task_id):
-    print(f"Démarrage de la tâche {task_id} pour {url}")
+    print(f"Démarrage de la tâche {task_id} pour {url} (vidéo)")
     try:
         json_cmd = f"yt-dlp --restrict-filenames --dump-json {shlex.quote(url)}"
         print(f"Exécution de la commande JSON : {json_cmd}")
@@ -40,9 +40,9 @@ def run_yt_dlp(url, task_id):
                 else:
                     filesize_approx = 'N/A'
 
-                db.add_task(task_id, title, thumbnail, duration_string, filesize_approx, resolution, filename, url)
+                db.add_task(task_id, title, thumbnail, duration_string, filesize_approx, resolution, filename, url, 'video')
                 task = db.get_task_by_id(task_id)
-                output_queue.put(f"[{task_id}] VideoInfo: {json.dumps({'task_id': task_id, 'date': task[0], 'title': title, 'thumbnail': thumbnail, 'duration_string': duration_string, 'filesize_approx': filesize_approx, 'resolution': resolution, 'filename': filename, 'progress': 0, 'status': task[10]})}")
+                output_queue.put(f"[{task_id}] VideoInfo: {json.dumps({'task_id': task_id, 'date': task[0], 'title': title, 'thumbnail': thumbnail, 'duration_string': duration_string, 'filesize_approx': filesize_approx, 'resolution': resolution, 'filename': filename, 'progress': 0, 'status': task[10], 'type': 'video'})}")
             except json.JSONDecodeError as e:
                 output_queue.put(f"[{task_id}] ❌ Erreur lors du parsing JSON : {str(e)}")
                 return
@@ -85,9 +85,91 @@ def run_yt_dlp(url, task_id):
             db.update_progress(task_id, 100)
             output_queue.put(f"[{task_id}] ✅ Téléchargement terminé !")
             task = db.get_task_by_id(task_id)
-            output_queue.put(f"[{task_id}] VideoInfo: {json.dumps({'task_id': task_id, 'status': task[10]})}")
+            output_queue.put(f"[{task_id}] VideoInfo: {json.dumps({'task_id': task_id, 'status': task[10], 'type': task[11]})}")
         else:
             output_queue.put(f"[{task_id}] ❌ Erreur : code {process.returncode}")
+    except FileNotFoundError as e:
+        output_queue.put(f"[{task_id}] ❌ Erreur : Commande bash ou script introuvable : {str(e)}")
+    except Exception as e:
+        output_queue.put(f"[{task_id}] ❌ Erreur exécution : {str(e)}")
+
+def run_yt_dlp_audio(url, task_id):
+    print(f"Démarrage de la tâche {task_id} pour {url} (audio)")
+    # Récupération des métadatas en premier
+    try:
+        json_cmd = f"yt-dlp --restrict-filenames --dump-json {shlex.quote(url)}"
+        print(f"Exécution de la commande JSON : {json_cmd}")
+        result = subprocess.run(shlex.split(json_cmd), capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=60)
+        if result.returncode == 0 and result.stdout.strip():
+            try:
+                video_info = json.loads(result.stdout.strip())
+                title = video_info.get('title', 'Titre inconnu')
+                thumbnail = video_info.get('thumbnail', '')  # Récupérer la miniature
+                duration_string = video_info.get('duration_string', 'N/A')
+                filesize_approx = video_info.get('filesize_approx', None)
+                resolution = 'N/A'  # Pas de résolution pour audio
+                filename = f"{title}.mp3"
+
+                if filesize_approx:
+                    if filesize_approx >= 1_000_000_000:
+                        filesize_approx = f"{filesize_approx / 1_000_000_000:.2f} Go"
+                    elif filesize_approx >= 1_000_000:
+                        filesize_approx = f"{filesize_approx / 1_000_000:.2f} Mo"
+                    else:
+                        filesize_approx = f"{filesize_approx / 1_000:.2f} Ko"
+                else:
+                    filesize_approx = 'N/A'
+
+                # Stocker les métadatas dans la BDD, même sans téléchargement
+                db.add_task(task_id, title, thumbnail, duration_string, filesize_approx, resolution, filename, url, 'audio')
+                task = db.get_task_by_id(task_id)
+                output_queue.put(f"[{task_id}] VideoInfo: {json.dumps({'task_id': task_id, 'date': task[0], 'title': title, 'thumbnail': thumbnail, 'duration_string': duration_string, 'filesize_approx': filesize_approx, 'resolution': resolution, 'filename': filename, 'progress': 0, 'status': task[10], 'type': 'audio'})}")
+            except json.JSONDecodeError as e:
+                output_queue.put(f"[{task_id}] ❌ Erreur lors du parsing JSON : {str(e)}")
+                return
+        else:
+            output_queue.put(f"[{task_id}] ❌ Erreur ou JSON vide : {result.stderr}")
+            return
+    except subprocess.TimeoutExpired as e:
+        output_queue.put(f"[{task_id}] ❌ Timeout lors de la récupération des informations")
+        return
+    except Exception as e:
+        output_queue.put(f"[{task_id}] ❌ Erreur inattendue : {str(e)}")
+        return
+
+    # Lancement du téléchargement
+    script_path = os.path.join("scripts", "run_yt_dlp_audio.sh")
+    if not os.path.isfile(script_path):
+        output_queue.put(f"[{task_id}] ❌ Erreur : Script {script_path} introuvable")
+        return
+    command = f"bash {script_path} {shlex.quote(url)} {shlex.quote(task_id)}"
+    try:
+        process = subprocess.Popen(
+            shlex.split(command),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            encoding='utf-8',
+            errors='replace'
+        )
+        progress_re = re.compile(r'\[download\]\s+(\d+\.\d+)%')
+        for line in iter(process.stdout.readline, ''):
+            line = line.strip()
+            if line:
+                match = progress_re.search(line)
+                if match:
+                    percentage = float(match.group(1))
+                    db.update_progress(task_id, percentage)
+                    output_queue.put(f"[{task_id}] Progress: {percentage}")
+                output_queue.put(f"[{task_id}] {line}")
+        process.wait()
+        if process.returncode == 0:
+            db.update_progress(task_id, 100)
+            output_queue.put(f"[{task_id}] ✅ Téléchargement terminé !")
+            task = db.get_task_by_id(task_id)
+            output_queue.put(f"[{task_id}] VideoInfo: {json.dumps({'task_id': task_id, 'status': task[10], 'type': task[11]})}")
+        else:
+            output_queue.put(f"[{task_id}] ❌ Erreur : code {process.returncode} - {line}")
     except FileNotFoundError as e:
         output_queue.put(f"[{task_id}] ❌ Erreur : Commande bash ou script introuvable : {str(e)}")
     except Exception as e:
@@ -106,23 +188,38 @@ def download():
     for url in urls:
         task_id = str(uuid.uuid4())
         threading.Thread(target=run_yt_dlp, args=(url, task_id), daemon=True).start()
-        print(f"Tâche {task_id} lancée pour {url}")
-    return "🚀 Téléchargement(s) démarré(s)...", 200
+        print(f"Tâche {task_id} lancée pour {url} (vidéo)")
+    return "🚀 Téléchargement(s) vidéo démarré(s)...", 200
+
+@app.route('/download-audio', methods=['POST'])
+def download_audio():
+    url = request.form.get('url')
+    if not url:
+        return "❌ URL manquante !", 400
+    # Vérification basique de l'URL
+    if not url.startswith(('http://', 'https://')):
+        return "❌ URL invalide !", 400
+    urls = [u.strip() for u in url.split(',') if u.strip()]
+    for url in urls:
+        task_id = str(uuid.uuid4())
+        threading.Thread(target=run_yt_dlp_audio, args=(url, task_id), daemon=True).start()
+        print(f"Tâche {task_id} lancée pour {url} (audio)")
+    return "🚀 Téléchargement(s) audio démarré(s)...", 200
 
 @app.route('/resume', methods=['POST'])
 def resume():
     task_id = request.form.get('task_id')
     if not task_id:
         return "❌ task_id manquant !", 400
-    # Récupérer l'URL originale depuis la BDD
     task = db.get_task_by_id(task_id)
     if not task or not task[9]:  # task[9] est original_url
         return f"❌ Tâche {task_id} non trouvée ou URL absente", 404
     original_url = task[9]
-    # Réinitialiser le statut à un timestamp epoch
-    db.update_progress(task_id, 0)  # Remet progress à 0 et status à timestamp
-    # Relancer le téléchargement dans un thread
-    threading.Thread(target=run_yt_dlp, args=(original_url, task_id), daemon=True).start()
+    db.update_progress(task_id, 0)  # Réinitialise progress et status à timestamp
+    if task[11] == 'video':  # task[11] est type
+        threading.Thread(target=run_yt_dlp, args=(original_url, task_id), daemon=True).start()
+    else:
+        threading.Thread(target=run_yt_dlp_audio, args=(original_url, task_id), daemon=True).start()
     return f"🚀 Reprise de la tâche {task_id} avec {original_url}", 200
 
 @app.route('/stream')
@@ -137,7 +234,7 @@ def stream():
         print(f"Ordre des tâches initiales: {[task[0] for task in tasks]}")
         initial_data = {
             "type": "InitialData",
-            "tasks": [{"date": task[0], "task_id": task[1], "title": task[2], "thumbnail": task[3], "duration_string": task[4], "filesize_approx": task[5], "resolution": task[6], "filename": task[7], "progress": task[8], "status": task[10]} for task in tasks],
+            "tasks": [{"date": task[0], "task_id": task[1], "title": task[2], "thumbnail": task[3], "duration_string": task[4], "filesize_approx": task[5], "resolution": task[6], "filename": task[7], "progress": task[8], "status": task[10], "type": task[11]} for task in tasks],
             "pagination": {
                 "current_page": page,
                 "total_pages": total_pages,
@@ -158,7 +255,6 @@ def stream():
 
 if __name__ == '__main__':
     print("Démarrage du serveur Flask...")
-    # Lancement de sentinelle.sh en tâche de fond
     sentinelle_path = os.path.join("scripts", "sentinelle.sh")
     if os.path.isfile(sentinelle_path):
         print(f"Lancement de {sentinelle_path} en arrière-plan...")

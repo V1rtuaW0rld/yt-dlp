@@ -2,6 +2,9 @@ const form = document.getElementById('download-form');
 const output = document.getElementById('output');
 const tableBody = document.getElementById('video-table-body');
 const paginationContainer = document.getElementById('pagination-container');
+const videoButton = document.querySelector('#download-form button.btn-outline-primary'); // Bouton vidéo
+const audioButton = document.querySelector('#download-form button.btn-outline-secondary'); // Bouton audio
+const urlInput = document.getElementById('url');
 
 let eventSource = new EventSource('/stream?page=1');
 let currentPage = 1;
@@ -166,21 +169,60 @@ function renderPagination() {
 }
 
 form.addEventListener('submit', async (e) => {
- e.preventDefault();
- output.textContent = 'Démarrage...\n';
- const url = document.getElementById('url').value;
- const res = await fetch('/download', {
- method: 'POST',
- headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
- body: `url=${encodeURIComponent(url)}`
- });
- if (res.ok) {
- const text = await res.text();
- output.textContent += text + '\n';
- loadPage(1); // Recharge la page 1 après soumission
- } else {
- output.textContent += 'Erreur lors du démarrage.\n';
- }
+    e.preventDefault(); // Désactiver le submit par défaut du formulaire
+    // Ne rien faire ici, on gère les boutons individuellement
+});
+
+videoButton.addEventListener('click', async (e) => {
+    e.preventDefault(); // Empêche le comportement par défaut du submit
+    output.textContent = 'Démarrage vidéo...\n';
+    const url = urlInput.value.trim();
+    if (!url) {
+        output.textContent += '❌ URL manquante !\n';
+        return;
+    }
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        output.textContent += '❌ URL invalide !\n';
+        return;
+    }
+    const res = await fetch('/download', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `url=${encodeURIComponent(url)}`
+    });
+    if (res.ok) {
+        const text = await res.text();
+        output.textContent += text + '\n';
+        loadPage(1);
+    } else {
+        output.textContent += 'Erreur lors du démarrage vidéo.\n';
+    }
+});
+
+audioButton.addEventListener('click', async (e) => {
+    e.preventDefault(); // Empêche le comportement par défaut du submit
+    output.textContent = 'Démarrage audio...\n';
+    const url = urlInput.value.trim();
+    if (!url) {
+        output.textContent += '❌ URL manquante !\n';
+        return;
+    }
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        output.textContent += '❌ URL invalide !\n';
+        return;
+    }
+    const res = await fetch('/download-audio', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `url=${encodeURIComponent(url)}`
+    });
+    if (res.ok) {
+        const text = await res.text();
+        output.textContent += text + '\n';
+        loadPage(1);
+    } else {
+        output.textContent += 'Erreur lors du démarrage audio.\n';
+    }
 });
 
 // Initialisation
