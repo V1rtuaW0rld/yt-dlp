@@ -29,11 +29,13 @@ class Database:
                 )
             """)
             conn.commit()
-
+   
     def add_task(self, task_id, title, thumbnail, duration_string, filesize_approx, resolution, filename, original_url, task_type='video'):
         """Ajoute une nouvelle tâche avec un timestamp Unix et le type de tâche."""
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         timestamp = str(int(time.time()))
+        # Extraire la partie après le dernier point (ex. 'mp4' sans le '.')
+        ext = filename.split('.')[-1] if filename and '.' in filename else ''
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute("""
@@ -43,7 +45,7 @@ class Database:
                     original_url, status, type
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)
             """, (now, task_id, title, thumbnail, duration_string,
-                  filesize_approx, resolution, filename, original_url, timestamp, task_type))
+                  filesize_approx, resolution, ext, original_url, timestamp, task_type))
             conn.commit()
             return self.get_task_by_id(task_id)
 

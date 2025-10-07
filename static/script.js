@@ -44,9 +44,15 @@ function handleMessage(event) {
                         row.setAttribute('data-task-id', task.task_id);
                         // Détecte si status est un timestamp epoch
                         const isEpoch = /^\d{9,}$/.test(task.status);
+                        // Remplace le texte "audio" ou "video" par les icônes
+                        let typeContent = task.type === 'audio' 
+                            ? `<img src="/static/images/sound.png" alt="Audio" style="max-width: 30px; max-height: 30px;">`
+                            : task.type === 'video' 
+                            ? `<img src="/static/images/video.png" alt="Vidéo" style="max-width: 30px; max-height: 30px;">`
+                            : task.type || 'N/A';
                         row.innerHTML = `
                             <td>${task.date || 'N/A'}</td>
-                            <td>${task.type || 'N/A'}</td> <!-- Nouvelle colonne Type -->
+                            <td>${typeContent}</td> <!-- Colonne Type avec icônes -->
                             <td id="video-title-${task.task_id}">${task.title || 'N/A'}</td>
                             <td id="video-thumbnail-${task.task_id}">${task.thumbnail ? `<img src="${task.thumbnail}" alt="Miniature" style="max-width: 100px; max-height: 100px;">` : 'N/A'}</td>
                             <td id="video-duration-${task.task_id}">${task.duration_string || 'N/A'}</td>
@@ -81,7 +87,7 @@ function handleMessage(event) {
                     });
                     currentPage = initialData.pagination.current_page;
                     totalPages = initialData.pagination.total_pages;
-                    perPage = initialData.pagination.per_page;
+                    per_page = initialData.pagination.per_page;
                     renderPagination();
                 }
             } catch (e) {
@@ -101,9 +107,15 @@ function handleMessage(event) {
                             row = document.createElement('tr');
                             row.setAttribute('data-task-id', taskId);
                             const isEpoch = /^\d{9,}$/.test(videoInfo.status);
+                            // Remplace le texte "audio" ou "video" par les icônes
+							let typeContent = videoInfo.type === 'audio' 
+                                ? `<img src="/static/images/sound.png" alt="Audio" style="width: 50px; height: 50px; max-width: 50px; max-height: 50px; object-fit: contain;">`
+                                : videoInfo.type === 'video' 
+                                ? `<img src="/static/images/video.png" alt="Vidéo" style="width: 50px; height: 50px; max-width: 50px; max-height: 50px; object-fit: contain;">`
+                                : videoInfo.type || 'N/A';	
                             row.innerHTML = `
                                 <td>${videoInfo.date || 'N/A'}</td>
-                                <td>${videoInfo.type || 'N/A'}</td> <!-- Nouvelle colonne Type -->
+                                <td>${typeContent}</td> <!-- Colonne Type avec icônes -->
                                 <td id="video-title-${taskId}">${videoInfo.title || 'N/A'}</td>
                                 <td id="video-thumbnail-${taskId}">${videoInfo.thumbnail ? `<img src="${videoInfo.thumbnail}" alt="Miniature" style="max-width: 100px; max-height: 100px;">` : 'N/A'}</td>
                                 <td id="video-duration-${taskId}">${videoInfo.duration_string || 'N/A'}</td>
