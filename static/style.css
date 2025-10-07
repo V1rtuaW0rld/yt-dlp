@@ -1,14 +1,18 @@
+/* === Structure générale === */
 body {
     font-family: Arial, sans-serif;
     margin: 20px;
 }
+
 form {
     margin-bottom: 20px;
 }
+
 input[type="text"] {
     width: 400px;
     padding: 8px;
 }
+
 button {
     padding: 8px 16px;
     background: #007bff;
@@ -16,6 +20,8 @@ button {
     border: none;
     cursor: pointer;
 }
+
+/* === Sortie en direct === */
 #output {
     border: 1px solid #ccc;
     padding: 10px;
@@ -25,43 +31,88 @@ button {
     white-space: pre-wrap;
     font-family: monospace;
 }
+
+/* === Tableau principal === */
 #video-table {
     width: 100%;
     margin: 20px 0;
     border-collapse: collapse;
     border: 2px solid #333;
+    table-layout: fixed;
 }
-#video-table th, #video-table td {
+
+/* === En-têtes et cellules === */
+#video-table th,
+#video-table td {
     padding: 10px;
     border: 1px solid #333;
     vertical-align: middle;
-    text-align: left;
-}
-#video-table th:nth-child(1), #video-table td:nth-child(1) { /* Date */
-    width: 15%;
-}
-#video-table th:nth-child(2), #video-table td:nth-child(2) { /* Titre */
-    width: 20%;
-}
-#video-table th:nth-child(3), #video-table td:nth-child(3) { /* Miniature */
-    width: 15%;
     text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
-#video-table th:nth-child(4), #video-table td:nth-child(4) { /* Durée */
-    width: 10%;
+
+/* === En-têtes === */
+#video-table thead th {
+    background-color: #000;
+    color: white;
+    font-weight: bold;
 }
-#video-table th:nth-child(5), #video-table td:nth-child(5) { /* Taille Approx. */
-    width: 10%;
+
+/* === Largeurs des colonnes === */
+#video-table th:nth-child(1), #video-table td:nth-child(1) { width: 12%; }    /* Date */
+#video-table th:nth-child(2), #video-table td:nth-child(2) { width: 102px; }  /* Type */
+#video-table th:nth-child(3), #video-table td:nth-child(3) { width: 20%; }    /* Titre */
+#video-table th:nth-child(4), #video-table td:nth-child(4) { width: 120px; }  /* Miniature */
+#video-table th:nth-child(5), #video-table td:nth-child(5) { width: 8%; }     /* Durée */
+#video-table th:nth-child(6), #video-table td:nth-child(6) { width: 8%; }     /* Taille Approx. */
+#video-table th:nth-child(7), #video-table td:nth-child(7) { width: 8%; }     /* Résolution */
+#video-table th:nth-child(8), #video-table td:nth-child(8) { width: 60px; }   /* Ext */
+#video-table th:nth-child(9), #video-table td:nth-child(9) { width: 100px; }  /* Progression */
+#video-table th:nth-child(10), #video-table td:nth-child(10) { width: 60px; } /* Action */
+
+/* === Icônes dans la colonne "Type" === */
+#video-table td:nth-child(2) img {
+    width: 100px;
+    height: 100px;
+    object-fit: contain;
+    display: block;
+    margin: 0 auto;
 }
-#video-table th:nth-child(6), #video-table td:nth-child(6) { /* Résolution */
-    width: 10%;
+
+/* === Miniatures dans la colonne "Miniature" === */
+#video-table td:nth-child(4) img {
+    max-width: 100px;
+    max-height: 100px;
+    object-fit: cover;
+    display: block;
+    margin: 0 auto;
 }
-#video-table th:nth-child(7), #video-table td:nth-child(7) { /* Nom du fichier */
-    width: 15%;
+
+/* === Icônes dans la colonne "Action" === */
+#video-table td:nth-child(10) img {
+    max-width: 30px;
+    max-height: 30px;
+    object-fit: contain;
+    display: block;
+    margin: 0 auto;
 }
-#video-table th:nth-child(8), #video-table td:nth-child(8) { /* Progression */
-    width: 10%;
+
+/* === Barre de progression === */
+#video-table td:nth-child(9) progress {
+    width: 100%;
+    max-width: 100px;
+    display: inline-block;
+    vertical-align: middle;
 }
+#video-table td:nth-child(9) span {
+    margin-left: 5px;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+/* === Conteneur de progression (si utilisé) === */
 #progress-container {
     position: relative;
     width: 100%;
@@ -91,5 +142,23 @@ button {
     font-weight: bold;
     text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
     font-size: 1.1em;
+}
+/#video-table td:nth-child(9) {
+    text-align: center;
+}
+#video-table td:nth-child(9) progress {
+    width: 100%;
+    max-width: 100px;
+    height: 16px;
+    display: block;
+    margin: 0 auto 4px auto;
+}
+#video-table td:nth-child(9) span {
+    display: block;
+    font-size: 0.9em;
+    font-weight: normal;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 

@@ -46,9 +46,9 @@ function handleMessage(event) {
                         const isEpoch = /^\d{9,}$/.test(task.status);
                         // Remplace le texte "audio" ou "video" par les icônes
                         let typeContent = task.type === 'audio' 
-                            ? `<img src="/static/images/sound.png" alt="Audio" style="max-width: 30px; max-height: 30px;">`
+                            ? `<img src="/static/images/sound.png" alt="Audio" style="max-width: 100px; max-height: 100px;">`
                             : task.type === 'video' 
-                            ? `<img src="/static/images/video.png" alt="Vidéo" style="max-width: 30px; max-height: 30px;">`
+                            ? `<img src="/static/images/video.png" alt="Vidéo" style="max-width: 100px; max-height: 100px;">`
                             : task.type || 'N/A';
                         row.innerHTML = `
                             <td>${task.date || 'N/A'}</td>
@@ -62,7 +62,7 @@ function handleMessage(event) {
                             <td><div id="progress-container-${task.task_id}"><progress id="progress-${task.task_id}" value="${task.progress || 0}" max="100"></progress><span id="progress-text-${task.task_id}">${(task.progress || 0).toFixed(1)}%</span></div></td>
                             <td>
                                 ${isEpoch ? `<img src="/static/images/default.gif" alt="En cours" style="max-width: 30px; max-height: 30px;">` : ''}
-                                ${task.status === '0' ? `<img src="/static/images/resume-button.png" alt="Reprendre" style="max-width: 30px; max-height: 30px; cursor: pointer;" class="resume-button" data-task-id="${task.task_id}">` : ''}
+                                ${task.status === '0' ? `<img src="/static/images/resume-button.png" alt="Reprendre" title="Reprendre" style="max-width: 30px; max-height: 30px; cursor: pointer;" class="resume-button" data-task-id="${task.task_id}">` : ''}
                                 ${task.status === '1' ? `<img src="/static/images/ok.png" alt="Terminé" style="max-width: 30px; max-height: 30px;">` : ''}
                             </td>
                         `;
